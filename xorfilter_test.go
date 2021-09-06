@@ -12,8 +12,7 @@ import (
 var rng = uint64(time.Now().UnixNano())
 
 func TestBasic(t *testing.T) {
-	testsize := 10000
-	keys := make([]uint64, testsize)
+	keys := make([]uint64, NUM_KEYS)
 	for i := range keys {
 		keys[i] = splitmix64(&rng)
 	}
@@ -21,12 +20,11 @@ func TestBasic(t *testing.T) {
 	for _, v := range keys {
 		assert.Equal(t, true, filter.Contains(v))
 	}
-	falsesize := 1000000
+	falsesize := 10000000
 	matches := 0
-	bpv := float64(len(filter.Fingerprints)) * 8.0 / float64(testsize)
+	bpv := float64(len(filter.Fingerprints)) * 8.0 / float64(NUM_KEYS)
 	fmt.Println("Xor8 filter:")
 	fmt.Println("bits per entry ", bpv)
-	assert.Equal(t, true, bpv < 10.)
 	for i := 0; i < falsesize; i++ {
 		v := splitmix64(&rng)
 		if filter.Contains(v) {
@@ -36,7 +34,47 @@ func TestBasic(t *testing.T) {
 	fpp := float64(matches) * 100.0 / float64(falsesize)
 	fmt.Println("false positive rate ", fpp)
 	assert.Equal(t, true, fpp < 0.40)
-	keys = keys[:1000]
+	cut := 1000
+	if cut > NUM_KEYS {
+		cut = NUM_KEYS
+	}
+	keys = keys[:cut]
+	for trial := 0; trial < 10; trial++ {
+		for i := range keys {
+			keys[i] = splitmix64(&rng)
+		}
+		filter, _ = Populate(keys)
+		for _, v := range keys {
+			assert.Equal(t, true, filter.Contains(v))
+		}
+	}
+}
+
+
+func TestSmall(t *testing.T) {
+	keys := make([]uint64, SMALL_NUM_KEYS)
+	for i := range keys {
+		keys[i] = splitmix64(&rng)
+	}
+	filter, _ := Populate(keys)
+	for _, v := range keys {
+		assert.Equal(t, true, filter.Contains(v))
+	}
+	falsesize := 10000000
+	matches := 0
+	for i := 0; i < falsesize; i++ {
+		v := splitmix64(&rng)
+		if filter.Contains(v) {
+			matches++
+		}
+	}
+	fpp := float64(matches) * 100.0 / float64(falsesize)
+	assert.Equal(t, true, fpp < 0.40)
+	cut := 1000
+	if cut > SMALL_NUM_KEYS {
+		cut = SMALL_NUM_KEYS
+	}
+	keys = keys[:cut]
 	for trial := 0; trial < 10; trial++ {
 		for i := range keys {
 			keys[i] = splitmix64(&rng)
@@ -86,6 +124,30 @@ func BenchmarkContains100000(b *testing.B) {
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		filter.Contains(keys[n%len(keys)])
+	}
+}
+
+
+const CONSTRUCT_SIZE = 10000000
+
+var bigrandomarray []uint64
+
+func bigrandomarrayInit() {
+	if bigrandomarray == nil {
+		fmt.Println("bigrandomarray setup with CONSTRUCT_SIZE = ", CONSTRUCT_SIZE)
+		bigrandomarray = make([]uint64, CONSTRUCT_SIZE)
+		for i := range bigrandomarray {
+			bigrandomarray[i] = rand.Uint64()
+		}
+	}
+}
+
+func BenchmarkConstructXor8(b *testing.B) {
+	bigrandomarrayInit()
+	b.ResetTimer()
+	b.ReportAllocs()	
+	for n := 0; n < b.N; n++ {
+		Populate(bigrandomarray)
 	}
 }
 
