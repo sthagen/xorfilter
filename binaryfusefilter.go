@@ -1,7 +1,6 @@
 package xorfilter
 
 import (
-	"errors"
 	"math"
 	"math/bits"
 	"sort"
@@ -19,14 +18,14 @@ type BinaryFuse8 struct {
 
 func calculateSegmentLength(arity uint32, size uint32) uint32 {
 	// These parameters are very sensitive. Replacing 'floor' by 'round' can
-    // substantially affect the construction time.
+	// substantially affect the construction time.
 	if size == 0 {
 		return 4
 	}
 	if arity == 3 {
-		return uint32(1) << int(math.Floor(math.Log(float64(size)) / math.Log(3.33) + 2.25))
+		return uint32(1) << int(math.Floor(math.Log(float64(size))/math.Log(3.33)+2.25))
 	} else if arity == 4 {
-		return uint32(1) << int(math.Floor(math.Log(float64(size)) / math.Log(2.91) - 0.5))
+		return uint32(1) << int(math.Floor(math.Log(float64(size))/math.Log(2.91)-0.5))
 	} else {
 		return 65536
 	}
@@ -34,9 +33,9 @@ func calculateSegmentLength(arity uint32, size uint32) uint32 {
 
 func calculateSizeFactor(arity uint32, size uint32) float64 {
 	if arity == 3 {
-		return math.Max(1.125, 0.875 + 0.25 * math.Log(1000000)/math.Log(float64(size)))
+		return math.Max(1.125, 0.875+0.25*math.Log(1000000)/math.Log(float64(size)))
 	} else if arity == 4 {
-		return math.Max(1.075, 0.77 + 0.305 * math.Log(600000)/math.Log(float64(size)))
+		return math.Max(1.075, 0.77+0.305*math.Log(600000)/math.Log(float64(size)))
 	} else {
 		return 2.0
 	}
@@ -77,7 +76,6 @@ func (filter *BinaryFuse8) getHashFromHash(hash uint64) (uint32, uint32, uint32)
 	return h0, h1, h2
 }
 
-
 func mod3(x uint8) uint8 {
 	if x > 2 {
 		x -= 3
@@ -85,9 +83,9 @@ func mod3(x uint8) uint8 {
 	return x
 }
 
-// PopulateBinaryFuse8 fills a BinaryFuse8 filter with provided keys.
-// The function may return an error after too many iterations: it is unlikely.
-// If your input has duplicates, it may get sorted.
+// PopulateBinaryFuse8 fills the filter with provided keys. For best results,
+// the caller should avoid having too many duplicated keys.
+// The function may return an error if the set is empty.
 func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 	size := uint32(len(keys))
 	filter := &BinaryFuse8{}
@@ -115,7 +113,14 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 	for true {
 		iterations += 1
 		if iterations > MaxIterations {
-			return nil, errors.New("too many iterations, you probably have duplicate keys")
+			// The probability of this happening is lower than the
+			// the cosmic-ray probability (i.e., a cosmic ray corrupts your system),
+			// but if it happens, we just fill the fingerprint with ones which
+			// will flag all possible keys as 'possible', ensuring a correct result.
+			for i := 0; i < len(filter.Fingerprints); i++ {
+				filter.Fingerprints[i] = ^uint8(0)
+			}
+			return filter, nil
 		}
 
 		blockBits := 1
@@ -154,7 +159,7 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 			t2hash[index3] ^= hash
 			// If we have duplicated hash values, then it is likely that
 			// the next comparison is true
-			if t2hash[index1] & t2hash[index2] & t2hash[index3] == 0 {
+			if t2hash[index1]&t2hash[index2]&t2hash[index3] == 0 {
 				// next we do the actual test
 				if ((t2hash[index1] == 0) && (t2count[index1] == 8)) || ((t2hash[index2] == 0) && (t2count[index2] == 8)) || ((t2hash[index3] == 0) && (t2count[index3] == 8)) {
 					duplicates += 1
@@ -238,7 +243,7 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 			}
 		}
 
-		if stacksize + duplicates == size {
+		if stacksize+duplicates == size {
 			// Success
 			size = stacksize
 			break
@@ -278,7 +283,6 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 
 	return filter, nil
 }
-
 
 // Contains returns `true` if key is part of the set with a false positive probability of <0.4%.
 func (filter *BinaryFuse8) Contains(key uint64) bool {

@@ -1,6 +1,6 @@
 # xorfilter: Go library implementing xor and binary fuse filters
 [![GoDoc](https://godoc.org/github.com/FastFilter/xorfilter?status.svg)](https://godoc.org/github.com/FastFilter/xorfilter)
-[![Build Status](https://cloud.drone.io/api/badges/FastFilter/xorfilter/status.svg)](https://cloud.drone.io/FastFilter/xorfilter)
+[![Test](https://github.com/FastFilter/xorfilter/actions/workflows/test.yml/badge.svg)](https://github.com/FastFilter/xorfilter/actions/workflows/test.yml)
 
 Bloom filters are used to quickly check whether an element is part of a set.
 Xor and binary fuse filters are a faster and more concise alternative to Bloom filters.
@@ -15,7 +15,8 @@ They are also smaller than cuckoo filters. They are used in [production systems]
 We are assuming that your set is made of 64-bit integers. If you have strings
 or other data structures, you need to hash them first to a 64-bit integer. It
 is not important to have a good hash function, but collision should be unlikely
-(~1/2^64).
+(~1/2^64). A few collisions are acceptable, but we expect that your initial set 
+should have no duplicated entry. 
 
 The current implementation has a false positive rate of about 0.3% and a memory usage
 of less than 9 bits per entry for sizeable sets.
@@ -34,8 +35,7 @@ You can then query it as follows:
 filter.Contains(v) // v is of type uint64
 ```
 
-It will *always* return true if v was part of the initial construction (`Populate`) and almost always
-return false otherwise.
+It will *always* return true if v was part of the initial construction (`Populate`) and almost always return false otherwise.
 
 An xor filter is immutable, it is concurrent. The expectation is that you build it once and use it many times.
 
@@ -55,20 +55,8 @@ type BinaryFuse8 struct {
 }
 ```
 
-# Duplicate keys
+When constructing the filter, you should ensure that there are not too many  duplicate keys for best results.
 
- When constructing the filter, you should ensure that there are not too many  duplicate keys. If you are hashing objects with a good hash function, you
- should have no concern, because there should be very few collisions. However,
- you can construct cases where there are many duplicates. If you think that this might happen, then you should check the error condition.
-
- ```Go
- filter,err := xorfilter.PopulateBinaryFuse8(keys) // keys is of type []uint64
- if err != nil {
-  // you have too many duplicate keys, de-duplicate them?
- }
- ```
-
- Effectively, an error is returned when the filter could not be build after `MaxIterations` iterations (default to 100).
 
 # Implementations of xor filters in other programming languages
 
@@ -79,4 +67,3 @@ type BinaryFuse8 struct {
 * [C](https://github.com/FastFilter/xor_singleheader)
 * [C99](https://github.com/skeeto/xf8)
 * [Python](https://github.com/GreyDireWolf/pyxorfilter)
-* [C#](https://github.com/MichaelStromberg-Illumina/SaOptimization/blob/16d40594eeebc6593ddf6ff42bb79eb06a8099a0/NirvanaCommon/Xor8.cs)

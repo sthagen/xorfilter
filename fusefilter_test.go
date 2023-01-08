@@ -49,7 +49,6 @@ func TestFuse8Basic(t *testing.T) {
 	}
 }
 
-
 func TestFuse8Small(t *testing.T) {
 	keys := make([]uint64, SMALL_NUM_KEYS)
 	for i := range keys {
@@ -90,7 +89,7 @@ func TestFuse8Small(t *testing.T) {
 func BenchmarkConstructFuse8(b *testing.B) {
 	bigrandomarrayInit()
 	b.ResetTimer()
-	b.ReportAllocs()	
+	b.ReportAllocs()
 	for n := 0; n < b.N; n++ {
 		PopulateFuse8(bigrandomarray)
 	}
@@ -109,10 +108,9 @@ func BenchmarkFuse8Populate10000000(b *testing.B) {
 
 func Test_DuplicateKeysFuse(t *testing.T) {
 	keys := []uint64{1, 77, 31, 241, 303, 303}
-	expectedErr := "too many iterations, you probably have duplicate keys"
 	_, err := PopulateFuse8(keys)
-	if err.Error() != expectedErr {
-		t.Fatalf("Unexpected error: %v, Expected: %v", err, expectedErr)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
 	}
 }
 

@@ -50,7 +50,6 @@ func TestBasic(t *testing.T) {
 	}
 }
 
-
 func TestSmall(t *testing.T) {
 	keys := make([]uint64, SMALL_NUM_KEYS)
 	for i := range keys {
@@ -105,10 +104,9 @@ func BenchmarkPopulate100000(b *testing.B) {
 // credit: el10savio
 func Test_DuplicateKeys(t *testing.T) {
 	keys := []uint64{1, 77, 31, 241, 303, 303}
-	expectedErr := "too many iterations, you probably have duplicate keys"
 	_, err := Populate(keys)
-	if err.Error() != expectedErr {
-		t.Fatalf("Unexpected error: %v, Expected: %v", err, expectedErr)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
 	}
 }
 
@@ -127,7 +125,6 @@ func BenchmarkContains100000(b *testing.B) {
 	}
 }
 
-
 const CONSTRUCT_SIZE = 10000000
 
 var bigrandomarray []uint64
@@ -145,7 +142,7 @@ func bigrandomarrayInit() {
 func BenchmarkConstructXor8(b *testing.B) {
 	bigrandomarrayInit()
 	b.ResetTimer()
-	b.ReportAllocs()	
+	b.ReportAllocs()
 	for n := 0; n < b.N; n++ {
 		Populate(bigrandomarray)
 	}
